@@ -1,0 +1,58 @@
+name: C Project CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build-test:
+    name: Build & Test (CI)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Install GCC
+        run: sudo apt-get install -y build-essential
+
+      - name: Compile Source Files
+        run: gcc main.c sum.c -o app
+
+      - name: Compile Test File
+        run: gcc test.c sum.c -o test
+
+      - name: Run Tests
+        run: ./test
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: compiled-app
+          path: app
+
+  deploy:
+    name: Deployment (CD)
+    needs: build-test
+    runs-on: ubuntu-latest
+
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: compiled-app
+          path: ./release
+
+      - name: Show Deployment Output
+        run: echo "Deployment complete! App uploaded as artifact."
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: "Release v1.0.${{ github.run_number }}"
+          files: ./release/app
